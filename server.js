@@ -14,7 +14,15 @@ app.use(logger);
 // build-in middleware to handle urlencoded data
 app.use(express.urlencoded({extended: false}));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '/public')));
+app.use('/', express.static(path.join(__dirname, '/public')));
+app.use('/subdir', express.static(path.join(__dirname, '/public')));
+
+app.use('/', require('./routes/root'));
+// use subdir by routes
+app.use('/subdir', require('./routes/subdir'));
+
+// rest api
+app.use('/', require('./routes/api/employees'));
 
 // cors - Cross origin resource sharing
 // run fetch('http://localhost:3500/index') at console of browser
@@ -33,35 +41,17 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// CHain request example
+// const one =(req, res, next)=>{
+//   console.log('one');
+//   next();
+// };
+// const two =(req, res, next)=>{
+//   console.log('two');
+//   next();
+// };
 
-app.get('^/$|/index(.html)?', (req, res)=>{
-  // either way to send file to view
-  //   res.sendFile('./views/index.html', {root: __dirname});
-  res.sendFile(path.join(__dirname, 'views', 'index.html'));
-});
-
-app.get('/home(.html)?', (req, res)=>{
-  // either way to send file to view
-  //   res.sendFile('./views/index.html', {root: __dirname});
-  res.sendFile(path.join(__dirname, 'views', 'home.html'));
-});
-
-app.get('/home(.html)?', (req, res)=>{
-  // either way to send file to view
-  //   res.sendFile('./views/index.html', {root: __dirname});
-  res.redirect(301, '/home.html');
-});
-
-const one =(req, res, next)=>{
-  console.log('one');
-  next();
-};
-const two =(req, res, next)=>{
-  console.log('two');
-  next();
-};
-
-app.get('/chain(.html)?', [one, two]);
+// app.get('/chain(.html)?', [one, two]);
 
 // when use app all, for all http method, we need to handle all different type of request
 app.all('*', (req, res)=>{
