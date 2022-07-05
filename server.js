@@ -4,6 +4,7 @@ const app = express();
 const path = require('path');
 const {logger} = require('./middleware/logEvent');
 const cors = require('cors');
+const corsOptions = require('./config/corsOption');
 const errorHandler = require('./middleware/errorHandler');
 // 1. create port and listerner
 const port = process.env.port || 3500;
@@ -11,49 +12,31 @@ const port = process.env.port || 3500;
 // custom middleware logger
 app.use(logger);
 
+/**
+ * cors - Cross origin resource sharing
+ * build-in middleware
+ * */
+app.use(cors(corsOptions));
+
 // build-in middleware to handle urlencoded data
 app.use(express.urlencoded({extended: false}));
+// build-in middleware for json
 app.use(express.json());
+// serve static files
 app.use('/', express.static(path.join(__dirname, '/public')));
 app.use('/subdir', express.static(path.join(__dirname, '/public')));
 
+// routes
 app.use('/', require('./routes/root'));
 // use subdir by routes
 app.use('/subdir', require('./routes/subdir'));
-
-// rest api
+// api route
 app.use('/', require('./routes/api/employees'));
 
-// cors - Cross origin resource sharing
-// run fetch('http://localhost:3500/index') at console of browser
-// and remove google from whitelist, run again, will see the error
-const whiteList = ['https://www.google.com', 'http://127.0.0.1:5500', 'http://localhost:3500'];
-const corsOptions = {
-  // anonymous function
-  origin: (origin, callback)=>{
-    if (whiteList.indexOf(origin)!==-1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  optionsSuccessStatus: 200,
-};
-app.use(cors(corsOptions));
-
-// CHain request example
-// const one =(req, res, next)=>{
-//   console.log('one');
-//   next();
-// };
-// const two =(req, res, next)=>{
-//   console.log('two');
-//   next();
-// };
-
-// app.get('/chain(.html)?', [one, two]);
-
-// when use app all, for all http method, we need to handle all different type of request
+/**
+ * 404 handler
+ *  when use app all, for all http method, we need to handle all different type of request
+*/
 app.all('*', (req, res)=>{
   res.status(404);
   if (req.accepts('html')) {
@@ -67,7 +50,7 @@ app.all('*', (req, res)=>{
 
 app.use(errorHandler);
 
-// serve file
+// server listener
 app.listen(port, ()=>{
   console.log(`server running on port ${port}`);
 });
