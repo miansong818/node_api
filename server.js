@@ -1,95 +1,83 @@
 /* eslint-disable max-len */
-const http = require('http');
+const express = require('express');
+const app = express();
 const path = require('path');
-const fs = require('fs');
-const fsPromises = require('fs').promises;
-
+const {logger} = require('./middleware/logEvent');
+const cors = require('cors');
+const errorHandler = require('./middleware/errorHandler');
 // 1. create port and listerner
 const port = process.env.port || 3500;
-// serve file
-const serveFile = async (filePath, contentType, response)=>{
-  try {
-    const rawData = await fsPromises.readFile(filePath, 'utf8');
-    console.log(rawData);
-    const data = contentType === 'application/json'?JSON.parse(rawData): rawData;
-    response.writeHead(200, {'Content-Type': contentType});
-    response.end(data);
-  } catch (e) {
-    console.log(e);
-    response.statusCode = 500;
-    response.end(contentType ==='application/json'? JSON.stringify(data):data);
-  }
-};
-// server
-const server = http.createServer((req, res)=>{
-  console.log(req.url, req.method);
-  const extension = path.extname(req.url);
-  let contentType;
-  switch (extension) {
-    case '.css':
-      contentType = 'text/css';
-      break;
-    case '.js':
-      contentType = 'text/javascript';
-      break;
-    case '.json':
-      contentType = 'application/json';
-      break;
-    case '.jpg':
-      contentType = 'image/jpeg';
-      break;
-    case '.txt':
-      contentType = 'text/plain';
-      break;
-    case '.png':
-      contentType = 'image/png';
-      break;
-    default:
-      contentType = 'text/html';
-  }
-  const defaultPath = path.join(__dirname, 'views', 'index.html');
 
-  let filePath = contentType === 'text/html' && req.url==='/'? defaultPath: contentType === 'text/html' && req.url.slice(-1)==='/' ? path.join(__dirname, 'views', req.url, 'index.html') : contentType === 'text/html'? path.join(__dirname, 'views', req.url) : path.join(__dirname, req.url);
+// custom middleware logger
+app.use(logger);
 
-  // make .html extension dones require in ithe browser
-  if (!extension && req.url.slice(-1)!=='/') filePath+='.html';
+// build-in middleware to handle urlencoded data
+app.use(express.urlencoded({extended: false}));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '/public')));
 
-  const fileExists = fs.existsSync(filePath);
-
-  if (fileExists) {
-    // serve the file if exists
-    serveFile(filePath, contentType, res);
-  } else {
-    // 404
-    // 301 redirect
-    console.log(path.parse(filePath));
-    switch (path.parse(filePath).base) {
-      case 'old-page.html':
-        res.writeHead(301, {'Location': '/new-page.html'});
-        res.end();
-        break;
-      case 'www-page.html':
-        res.writeHead(301, {'Location': '/'});
-        res.end();
-        break;
-      default:
-        serveFile(path.join(__dirname, 'views', '404.html'), 'text/html', res);
+// cors - Cross origin resource sharing
+// run fetch('http://localhost:3500/index') at console of browser
+// and remove google from whitelist, run again, will see the error
+const whiteList = ['https://www.google.com', 'http://127.0.0.1:5500', 'http://localhost:3500'];
+const corsOptions = {
+  // anonymous function
+  origin: (origin, callback)=>{
+    if (whiteList.indexOf(origin)!==-1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
     }
-  }
-  //   switch (req.url) {
-  //     case '/':
-  //       res.statusCode = 200;
-  //       path = path.join(__dirname, 'views', 'index.html');
-  //       fs.readFile(path, 'utf-8', (err, data)=>{
-  //         res.end(data);
-  //       });
-  //       break;
+  },
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 
-//     //   default ;
-//   }
+
+app.get('^/$|/index(.html)?', (req, res)=>{
+  // either way to send file to view
+  //   res.sendFile('./views/index.html', {root: __dirname});
+  res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
-// 3. server file
-server.listen(port, ()=>{
+app.get('/home(.html)?', (req, res)=>{
+  // either way to send file to view
+  //   res.sendFile('./views/index.html', {root: __dirname});
+  res.sendFile(path.join(__dirname, 'views', 'home.html'));
+});
+
+app.get('/home(.html)?', (req, res)=>{
+  // either way to send file to view
+  //   res.sendFile('./views/index.html', {root: __dirname});
+  res.redirect(301, '/home.html');
+});
+
+const one =(req, res, next)=>{
+  console.log('one');
+  next();
+};
+const two =(req, res, next)=>{
+  console.log('two');
+  next();
+};
+
+app.get('/chain(.html)?', [one, two]);
+
+// when use app all, for all http method, we need to handle all different type of request
+app.all('*', (req, res)=>{
+  res.status(404);
+  if (req.accepts('html')) {
+    res.status(404).sendFile(path.join(__dirname, 'views', '404.html'));
+  } else if (req.accepts('json')) {
+    res.json({error: '404 Not Found'});
+  } else {
+    res.type('txt').send('404 Not found');
+  }
+});
+
+app.use(errorHandler);
+
+// serve file
+app.listen(port, ()=>{
   console.log(`server running on port ${port}`);
 });
