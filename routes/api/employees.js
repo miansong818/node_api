@@ -3,9 +3,6 @@ const express = require('express');
 const router = express.Router();
 const employeeController = require('../../controller/employeesController');
 
-const data= {};
-data.employees = require('../../data/employee.json');
-
 router.route('/employees')
     .get(employeeController.getAllEmployees)
     .post(employeeController.createEmployee)
@@ -14,4 +11,5 @@ router.route('/employees')
 
 router.route('/employee/:id')
     .get(employeeController.getAllEmployeeById);
+
 module.exports = router;

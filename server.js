@@ -26,13 +26,15 @@ app.use(express.json());
 app.use('/', express.static(path.join(__dirname, '/public')));
 app.use('/subdir', express.static(path.join(__dirname, '/public')));
 
-// routes
-app.use('/', require('./routes/root'));
 // use subdir by routes
 app.use('/subdir', require('./routes/subdir'));
+
+// routes
+app.use('/', require('./routes/root'));
 // api route
 app.use('/', require('./routes/api/employees'));
-
+app.use('/register', require('./routes/register'));
+app.use('/auth', require('./routes/auth'));
 /**
  * 404 handler
  *  when use app all, for all http method, we need to handle all different type of request
